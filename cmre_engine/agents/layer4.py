@@ -5,9 +5,13 @@ Agente 27: ConflictResolver — resolve conflitos detectados pelos validadores
 Agente 28: PromptSynthesizer — constrói o prompt final otimizado
 Agente 29: NegativePromptFinal — consolida o prompt negativo
 Agente 30: Executor          — envia para o backend selecionado
+
+O Executor (Agente 30) consulta o banco de referências (Lado A) antes de
+gerar, usando as referências como âncora de calibração do prompt.
 """
 import statistics
-from ..models import TechnicalBlocks, ValidationResult, CCIReport
+from typing import Optional
+from ..models import TechnicalBlocks, ValidationResult, CCIReport, ReferenceEntry
 
 
 # Pesos por par de validação (quanto cada domínio impacta o CCI final)
@@ -170,18 +174,108 @@ class NegativePromptFinal:
         return ", ".join(unique[:40])
 
 
+class ReferenceEnricher:
+    """
+    Agente 30a — ReferenceEnricher (Lado B — consulta ao banco de referências)
+
+    Antes de gerar, consulta o banco de fotos reais analisadas (Lado A) e
+    enriquece o prompt com características técnicas de referências com CCI alto.
+
+    Se nenhuma referência for encontrada, retorna o prompt inalterado.
+    """
+
+    def enrich(
+        self,
+        prompt: str,
+        scene_genre: str,
+        db,
+        top_k: int = 3,
+        min_cci: float = 0.70,
+    ) -> tuple[str, list[ReferenceEntry]]:
+        """
+        Busca referências do mesmo gênero e injeta detalhes técnicos no prompt.
+
+        Returns:
+            (prompt_enriquecido, lista_de_referencias_usadas)
+        """
+        if db is None:
+            return prompt, []
+
+        try:
+            refs = db.find_similar(scene_genre, min_cci=min_cci, limit=top_k)
+        except Exception:
+            return prompt, []
+
+        if not refs:
+            return prompt, []
+
+        # Extrair características técnicas das melhores referências
+        ref_details = []
+        for ref in refs:
+            detail_parts = []
+            if ref.blocks.luz:
+                detail_parts.append(ref.blocks.luz)
+            if ref.blocks.optica:
+                detail_parts.append(ref.blocks.optica)
+            if ref.blocks.textura_captura:
+                detail_parts.append(ref.blocks.textura_captura)
+            if detail_parts:
+                ref_details.append(f"[ref CCI={ref.cci_score:.2f}] {', '.join(detail_parts)}")
+
+        if not ref_details:
+            return prompt, refs
+
+        # Injeta a ancora de referência no prompt, antes do footer de qualidade
+        reference_anchor = (
+            f"calibrated to real photographic reference "
+            f"({'; '.join(ref_details[:2])})"
+        )
+        enriched = prompt + ", " + reference_anchor
+
+        return enriched, refs
+
+
 class Executor:
     """
     Agente 30 — Executor
     Conecta ao backend configurado e executa a geração de imagem.
+    Consulta o banco de referências (Lado A) antes de gerar para calibrar o prompt.
     Retorna o caminho do arquivo gerado.
     """
 
-    def execute(self, prompt: str, negative: str, backend, briefing: str,
-                cci: float, validations: list[ValidationResult],
-                blocks: TechnicalBlocks) -> CCIReport:
+    def __init__(self):
+        self.enricher = ReferenceEnricher()
+
+    def execute(
+        self,
+        prompt: str,
+        negative: str,
+        backend,
+        briefing: str,
+        cci: float,
+        validations: list[ValidationResult],
+        blocks: TechnicalBlocks,
+        scene_genre: str = "",
+        db=None,
+    ) -> CCIReport:
 
         print(f"\n🎨 Executando geração | CCI: {cci:.2f}")
+
+        # ─── Enriquecimento com banco de referências (Lado B) ─────────────────
+        refs_used = []
+        if db and scene_genre:
+            from ..config import REFERENCE_MIN_CCI, REFERENCE_TOP_K
+            prompt_enriched, refs_used = self.enricher.enrich(
+                prompt, scene_genre, db,
+                top_k=REFERENCE_TOP_K,
+                min_cci=REFERENCE_MIN_CCI,
+            )
+            if refs_used:
+                print(f"📚 {len(refs_used)} referência(s) de '{scene_genre}' "
+                      f"usada(s) como âncora (CCI máx: {refs_used[0].cci_score:.2f})")
+                prompt = prompt_enriched
+        # ─────────────────────────────────────────────────────────────────────
+
         print(f"📝 Prompt ({len(prompt)} chars)")
         print(f"🚫 Negative ({len(negative)} chars)")
 
@@ -194,6 +288,12 @@ class Executor:
             print(f"✅ Imagem gerada: {image_path}")
         except Exception as e:
             print(f"❌ Erro no backend {backend_name}: {e}")
+
+        # Registra referências usadas nos metadados do relatório
+        ref_meta = [
+            {"id": r.id, "image_path": r.image_path, "cci": r.cci_score}
+            for r in refs_used
+        ] if refs_used else []
 
         return CCIReport(
             cci_score=cci,

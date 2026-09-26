@@ -3,6 +3,7 @@ CMRE Engine — Modelos de dados compartilhados entre todas as camadas.
 """
 from dataclasses import dataclass, field
 from typing import Optional
+import datetime
 
 
 @dataclass
@@ -56,3 +57,47 @@ class CCIReport:
             f"Backend: {self.backend_used} | "
             f"Imagem: {self.image_path or 'não gerada'}"
         )
+
+
+# ─── Modelos do Lado A — Análise de Fotos Reais ──────────────────────────────
+
+@dataclass
+class PhotoAnalysisReport:
+    """
+    Relatório gerado pelo Lado A (análise de foto real).
+    Espelha o CCIReport, mas a origem é uma imagem real, não um briefing.
+    """
+    image_path: str                           # Caminho da foto analisada
+    cci_score: float                          # CCI calculado sobre os blocos extraídos
+    blocks: TechnicalBlocks = field(default_factory=TechnicalBlocks)
+    validations: list[ValidationResult] = field(default_factory=list)
+    scene_genre: str = ""                     # Classificação: retrato, paisagem, produto...
+    metadata: dict = field(default_factory=dict)  # Dados extras (câmera EXIF, etc.)
+    image_hash: str = ""                      # SHA256 do arquivo de imagem
+
+    def summary(self) -> str:
+        status = "✅ REFERÊNCIA APROVADA" if self.cci_score >= 0.75 else "⚠️ REFERÊNCIA FRACA"
+        return (
+            f"{status} | CCI Real: {self.cci_score:.2f} | "
+            f"Gênero: {self.scene_genre or 'indefinido'} | "
+            f"Foto: {self.image_path}"
+        )
+
+
+@dataclass
+class ReferenceEntry:
+    """
+    Registro armazenado no banco de referências (SQLite).
+    Cada entrada representa uma foto real analisada pelos 30 agentes.
+    """
+    image_path: str
+    image_hash: str
+    scene_genre: str
+    blocks: TechnicalBlocks
+    cci_score: float
+    validator_scores: dict                    # {"Luz × Sombra": 0.9, ...}
+    created_at: str = field(
+        default_factory=lambda: datetime.datetime.utcnow().isoformat()
+    )
+    metadata: dict = field(default_factory=dict)
+    id: Optional[int] = None                 # Atribuído pelo banco ao inserir

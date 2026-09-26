@@ -1,6 +1,10 @@
 """
 CMRE Engine — Agente 00: Orquestrador Principal
 Coordena todas as 5 camadas do motor de realismo visual.
+
+Arquitetura dual-flow:
+  Lado A (PhotoAnalyzer): foto real → 30 agentes leem → blocos → CCI → banco
+  Lado B (CMREOrchestrator): briefing → 30 agentes escrevem → banco (consulta) → gera
 """
 from .models import CCIReport
 from .agents.layer1 import IntentParser, SceneClassifier
@@ -10,7 +14,7 @@ from .agents.layer4 import (
     CCICalculator, ConflictResolver, PromptSynthesizer,
     NegativePromptFinal, Executor
 )
-from .config import BACKEND, VERBOSE
+from .config import BACKEND, VERBOSE, REFERENCE_DB_PATH
 
 
 class CMREOrchestrator:
@@ -26,7 +30,7 @@ class CMREOrchestrator:
     L4: CCICalc + Resolver + Synth + Exec    (Agentes 26–30)
     """
 
-    def __init__(self):
+    def __init__(self, use_reference_db: bool = True):
         # L1
         self.intent_parser = IntentParser()
         self.scene_classifier = SceneClassifier()
@@ -46,6 +50,20 @@ class CMREOrchestrator:
 
         # Backend de geração (configurado em config.py)
         self.backend = BACKEND
+
+        # Banco de referências do Lado A (opcional)
+        self.db = None
+        if use_reference_db:
+            try:
+                from .reference.database import ReferenceDatabase
+                self.db = ReferenceDatabase(REFERENCE_DB_PATH)
+                if VERBOSE:
+                    stats = self.db.stats()
+                    print(f"📚 Banco de referências: {stats['total']} fotos | "
+                          f"CCI médio: {stats['avg_cci']:.2f}")
+            except Exception as e:
+                if VERBOSE:
+                    print(f"⚠️  Banco de referências não disponível: {e}")
 
     def run(self, briefing: str) -> CCIReport:
         """
@@ -111,7 +129,8 @@ class CMREOrchestrator:
         prompt_final = self.prompt_synthesizer.synthesize(blocks, cci_final)
         negative_final = self.negative_builder.build(blocks.exclusoes)
 
-        # 4.5: Executar geração
+        # 4.5: Executar geração (com consulta ao banco de referências — Lado B)
+        scene_genre = classification.get("primary_domain", "geral")
         report = self.executor.execute(
             prompt=prompt_final,
             negative=negative_final,
@@ -120,6 +139,8 @@ class CMREOrchestrator:
             cci=cci_final,
             validations=validations_final,
             blocks=blocks,
+            scene_genre=scene_genre,
+            db=self.db,
         )
 
         self._log(f"\n{'='*60}")

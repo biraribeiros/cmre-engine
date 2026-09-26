@@ -22,6 +22,21 @@ VERBOSE = os.getenv("CMRE_VERBOSE", "true").lower() == "true"
 # Diretório de saída das imagens geradas
 OUTPUT_DIR = os.getenv("CMRE_OUTPUT_DIR", "outputs")
 
+# ─── Configuração do Lado A (Análise de Fotos Reais) ─────────────────────────
+
+# Modelo de visão para extrair blocos técnicos de fotos reais
+# Precisa suportar multimodal (imagem + texto). Default: Gemini 2.0 Flash Exp
+VISION_MODEL = os.getenv("CMRE_VISION_MODEL", "gemini-2.0-flash-exp")
+
+# Caminho do banco SQLite de referências (criado automaticamente)
+REFERENCE_DB_PATH = os.getenv("CMRE_REFERENCE_DB", "outputs/reference.db")
+
+# CCI mínimo para uma referência ser usada como âncora na geração (Lado B)
+REFERENCE_MIN_CCI = float(os.getenv("CMRE_REFERENCE_MIN_CCI", "0.70"))
+
+# Número de referências similares consultadas antes de gerar (Lado B)
+REFERENCE_TOP_K = int(os.getenv("CMRE_REFERENCE_TOP_K", "3"))
+
 # ─── Inicialização do Backend ─────────────────────────────────────────────────
 
 def _load_backend():
