@@ -1,0 +1,17 @@
+# CMRE Engine — Dependências Python
+# Instale com: pip install -r requirements.txt
+
+# Backend Gemini (recomendado — gratuito)
+google-genai>=0.8.0
+
+# Variáveis de ambiente
+python-dotenv>=1.0.0
+
+# Processamento de imagens
+pillow>=10.0.0
+
+# Requisições HTTP (backend Fooocus)
+requests>=2.31.0
+
+# Backend DALL-E (opcional — pago)
+# openai>=1.0.0
