@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMRE Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ─── Tokens ─────────────────────────────────────────── */
+    :root {
+      --bg:        #0c0e14;
+      --surface:   #13161f;
+      --surface2:  #1c2030;
+      --border:    #252a3a;
+      --accent:    #5b8fff;
+      --accent-lo: #1a2d5a;
+      --text:      #d8dff0;
+      --text-dim:  #7880a0;
+      --green:     #3ecf8e;
+      --red:       #ff5b6e;
+      --yellow:    #f5c542;
+      --radius:    12px;
+    }
+
+    /* ─── Reset ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+    }
+
+    /* ─── Header ─────────────────────────────────────────── */
+    header {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+    .logo { font-size: 1.6rem; }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { font-size: 0.78rem; color: var(--text-dim); }
+    .badge {
+      margin-left: auto;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: var(--accent-lo);
+      color: var(--accent);
+      padding: 3px 10px;
+      border-radius: 99px;
+    }
+
+    /* ─── Layout ─────────────────────────────────────────── */
+    main {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ─── Card ───────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .card h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    /* ─── Form elements ──────────────────────────────────── */
+    label { font-size: 0.82rem; color: var(--text-dim); display: block; margin-bottom: 6px; }
+
+    textarea, select, input[type="text"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 12px 14px;
+      transition: border-color 0.2s;
+      outline: none;
+      resize: vertical;
+    }
+    textarea:focus, select:focus, input:focus {
+      border-color: var(--accent);
+    }
+    textarea { min-height: 100px; }
+    select { cursor: pointer; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 540px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Buttons ────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 8px 16px; font-size: 0.8rem; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    /* ─── Progress / Steps ───────────────────────────────── */
+    .steps {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+    }
+    .step {
+      flex: 1;
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      position: relative;
+      padding-bottom: 8px;
+    }
+    .step::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--border);
+    }
+    .step.active { color: var(--accent); font-weight: 600; }
+    .step.active::after { background: var(--accent); }
+    .step.done { color: var(--green); }
+    .step.done::after { background: var(--green); }
+
+    /* ─── CCI Score ──────────────────────────────────────── */
+    .cci-box {
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .cci-score {
+      font-size: 2.4rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      min-width: 80px;
+    }
+    .cci-score.approved { color: var(--green); }
+    .cci-score.rejected { color: var(--red); }
+    .cci-label { font-size: 0.78rem; color: var(--text-dim); }
+    .cci-bar-wrap {
+      flex: 1;
+      background: var(--border);
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .cci-bar {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.6s ease;
+      background: var(--green);
+    }
+    .cci-bar.low { background: var(--red); }
+    .cci-bar.mid { background: var(--yellow); }
+
+    /* ─── Prompt display ─────────────────────────────────── */
+    .prompt-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    /* ─── Backend selector ───────────────────────────────── */
+    .backend-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 540px) { .backend-grid { grid-template-columns: 1fr; } }
+
+    .backend-card {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      user-select: none;
+    }
+    .backend-card:hover { border-color: var(--accent); }
+    .backend-card.selected {
+      border-color: var(--accent);
+      background: var(--accent-lo);
+    }
+    .backend-card .bc-name { font-size: 0.88rem; font-weight: 600; }
+    .backend-card .bc-desc { font-size: 0.72rem; color: var(--text-dim); margin-top: 4px; }
+    .backend-card .bc-tag {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: var(--surface);
+      color: var(--text-dim);
+    }
+    .bc-tag.free { background: #0a2a1c; color: var(--green); }
+    .bc-tag.paid { background: #2a1a0a; color: var(--yellow); }
+    .bc-tag.local { background: #1a1a2a; color: #a0a0ff; }
+
+    /* ─── Image result ───────────────────────────────────── */
+    .image-result {
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+    .image-result img {
+      width: 100%;
+      display: block;
+      border-radius: 10px;
+    }
+    .image-placeholder {
+      background: var(--surface2);
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+    .image-placeholder .icon { font-size: 2.5rem; }
+
+    /* ─── Star rating ────────────────────────────────────── */
+    .star-rating {
+      display: flex;
+      gap: 6px;
+    }
+    .star {
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: var(--border);
+      transition: color 0.1s, transform 0.1s;
+      line-height: 1;
+    }
+    .star:hover, .star.active { color: var(--yellow); }
+    .star:hover { transform: scale(1.15); }
+
+    .rating-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .rating-label {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      min-width: 100px;
+    }
+
+    /* ─── Spinner ────────────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Toast ──────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      max-width: 320px;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 999;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--green); color: var(--green); }
+    #toast.error   { border-color: var(--red); color: var(--red); }
+
+    /* ─── Utils ──────────────────────────────────────────── */
+    .hidden { display: none !important; }
+    .mt-12 { margin-top: 12px; }
+    .text-dim { color: var(--text-dim); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🎞️</span>
+  <div>
+    <h1>CMRE Engine</h1>
+    <p>30 agentes · Pipeline de geração ultra-realista</p>
+  </div>
+  <span class="badge" id="api-status">Conectando…</span>
+</header>
+
+<main>
+
+  <!-- Steps -->
+  <div class="steps" id="steps">
+    <div class="step active" id="step-1">1 · Briefing</div>
+    <div class="step" id="step-2">2 · Prompt</div>
+    <div class="step" id="step-3">3 · Gerar</div>
+    <div class="step" id="step-4">4 · Avaliar</div>
+  </div>
+
+  <!-- ── Passo 1: Briefing ── -->
+  <div class="card" id="card-briefing">
+    <h2>Briefing da Imagem</h2>
+
+    <div style="margin-bottom:16px">
+      <label>Descreva a imagem que deseja gerar</label>
+      <textarea id="briefing" placeholder="Ex: Retrato de uma mulher de 30 anos em um café parisiense, luz natural da tarde, câmera médio formato, profundidade de campo rasa…"></textarea>
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>Gênero de cena</label>
+        <select id="scene-genre">
+          <option value="geral">Geral</option>
+          <option value="retrato">Retrato</option>
+          <option value="produto">Produto</option>
+          <option value="paisagem">Paisagem</option>
+          <option value="urbano">Urbano</option>
+          <option value="moda">Moda</option>
+          <option value="esporte">Esporte</option>
+          <option value="alimento">Alimento</option>
+          <option value="animal">Animal</option>
+          <option value="arquitetura">Arquitetura</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-process" onclick="processStep()">
+        🧠 Processar com 30 Agentes
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Passo 2: Resultado do Prompt ── -->
+  <div class="card hidden" id="card-prompt">
+    <h2>Prompt Gerado · Análise CCI</h2>
+
+    <div class="cci-box" id="cci-box" style="margin-bottom:20px">
+      <div>
+        <div class="cci-score" id="cci-value">—</div>
+        <div class="cci-label">CCI Score</div>
+      </div>
+      <div style="flex:1">
+        <div class="cci-bar-wrap">
+          <div class="cci-bar" id="cci-bar" style="width:0%"></div>
+        </div>
+        <div class="cci-label mt-12" id="cci-msg">Aguardando…</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label>Prompt técnico (editável)</label>
+      <div class="prompt-box" id="prompt-display" contenteditable="true">—</div>
+    </div>
+
+    <div style="margin-bottom:8px">
+      <label>Negative prompt</label>
+      <div class="prompt-box" id="neg-prompt-display" contenteditable="true">—</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="reset()">← Editar Briefing</button>
+      <button class="btn btn-primary" id="btn-to-generate" onclick="showGenerateStep()">
+        Escolher Backend →
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Passo 3: Backend e Geração ── -->
+  <div class="card hidden" id="card-generate">
+    <h2>Backend de Geração</h2>
+
+    <div class="backend-grid" id="backend-grid">
+      <div class="backend-card selected" data-backend="gemini" onclick="selectBackend('gemini', this)">
+        <div class="bc-name">✦ Gemini</div>
+        <div class="bc-desc">Google Imagen — cloud</div>
+        <span class="bc-tag free">Grátis (cota)</span>
+      </div>
+      <div class="backend-card" data-backend="dalle" onclick="selectBackend('dalle', this)">
+        <div class="bc-name">⬡ DALL-E 3</div>
+        <div class="bc-desc">OpenAI — cloud, alta qualidade</div>
+        <span class="bc-tag paid">Pago por imagem</span>
+      </div>
+      <div class="backend-card" data-backend="fooocus" onclick="selectBackend('fooocus', this)">
+        <div class="bc-name">◈ Fooocus</div>
+        <div class="bc-desc">Local — offline, DirectML/GPU</div>
+        <span class="bc-tag local">Local (reqr. GPU)</span>
+      </div>
+    </div>
+
+    <div class="image-placeholder" id="image-placeholder">
+      <span class="icon">🖼️</span>
+      <span>A imagem aparecerá aqui</span>
+    </div>
+    <div class="image-result hidden" id="image-result">
+      <img id="result-img" src="" alt="Imagem gerada">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="showPromptStep()">← Voltar ao Prompt</button>
+      <button class="btn btn-primary" id="btn-generate" onclick="generateImage()">
+        🎨 Gerar Imagem
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Passo 4: Avaliação ── -->
+  <div class="card hidden" id="card-rating">
+    <h2>Avaliação da Imagem</h2>
+    <p class="text-dim" style="margin-bottom:20px">
+      Sua avaliação treina continuamente os agentes CMRE.
+    </p>
+
+    <div class="rating-grid" id="rating-grid">
+      <!-- Gerado via JS -->
+    </div>
+
+    <div style="margin-top:20px">
+      <label>Comentário (opcional)</label>
+      <textarea id="feedback-comment" placeholder="O que poderia melhorar?" style="min-height:70px"></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="skipFeedback()">Pular</button>
+      <button class="btn btn-primary" id="btn-feedback" onclick="submitFeedback()">
+        ✅ Enviar Avaliação
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ─── Estado global ──────────────────────────────────────
+  const API = 'http://localhost:8000';
+  let state = {
+    sessionId: null,
+    prompt: '',
+    negativePrompt: '',
+    cciScore: 0,
+    backend: 'gemini',
+    imagePath: null,
+    blocks: {},
+    validators: {},
+    ratings: {},
+  };
+
+  const DIMENSIONS = [
+    { key: 'realismo',   label: 'Realismo',   hint: 'parece uma foto real?' },
+    { key: 'tecnica',    label: 'Técnica',     hint: 'foco, luz, exposição, cor' },
+    { key: 'composicao', label: 'Composição',  hint: 'enquadramento e layout' },
+    { key: 'coerencia',  label: 'Coerência',   hint: 'corresponde ao briefing?' },
+    { key: 'impacto',    label: 'Impacto',     hint: 'wow factor' },
+  ];
+
+  // ─── API check ──────────────────────────────────────────
+  async function checkApi() {
+    try {
+      const r = await fetch(`${API}/status`, { signal: AbortSignal.timeout(3000) });
+      const data = await r.json();
+      const el = document.getElementById('api-status');
+      el.textContent = '● Online';
+      el.style.background = '#0a2a1c';
+      el.style.color = '#3ecf8e';
+    } catch {
+      const el = document.getElementById('api-status');
+      el.textContent = '○ API off';
+      el.style.background = '#2a0a0a';
+      el.style.color = '#ff5b6e';
+    }
+  }
+
+  // ─── Steps ──────────────────────────────────────────────
+  function setStep(active) {
+    for (let i = 1; i <= 4; i++) {
+      const el = document.getElementById(`step-${i}`);
+      el.className = 'step ' + (i < active ? 'done' : i === active ? 'active' : '');
+    }
+  }
+
+  // ─── Passo 1 → 2: Processar ─────────────────────────────
+  async function processStep() {
+    const briefing = document.getElementById('briefing').value.trim();
+    if (!briefing) { toast('Digite o briefing!', 'error'); return; }
+
+    const btn = document.getElementById('btn-process');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Processando 30 agentes…';
+
+    try {
+      const res = await fetch(`${API}/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          briefing,
+          scene_genre: document.getElementById('scene-genre').value,
+          session_id: state.sessionId,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Erro no servidor');
+      }
+
+      const data = await res.json();
+      state.sessionId      = data.session_id;
+      state.prompt         = data.prompt;
+      state.negativePrompt = data.negative_prompt;
+      state.cciScore       = data.cci_score;
+      state.blocks         = data.blocks;
+      state.validators     = data.validators;
+
+      showPromptStep(data);
+
+    } catch (e) {
+      toast('Erro: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🧠 Processar com 30 Agentes';
+    }
+  }
+
+  function showPromptStep(data) {
+    const score = state.cciScore;
+    const pct   = Math.round(score * 100);
+    const approved = score >= 0.75;
+
+    document.getElementById('cci-value').textContent = score.toFixed(3);
+    document.getElementById('cci-value').className =
+      'cci-score ' + (approved ? 'approved' : 'rejected');
+
+    const bar = document.getElementById('cci-bar');
+    bar.style.width = pct + '%';
+    bar.className = 'cci-bar ' + (score < 0.5 ? 'low' : score < 0.75 ? 'mid' : '');
+
+    document.getElementById('cci-msg').textContent =
+      approved
+        ? `✅ CCI ${pct}% — aprovado para geração`
+        : `⚠️  CCI ${pct}% — abaixo do limiar 75%`;
+
+    document.getElementById('prompt-display').textContent = state.prompt;
+    document.getElementById('neg-prompt-display').textContent = state.negativePrompt;
+
+    document.getElementById('card-briefing').classList.add('hidden');
+    document.getElementById('card-prompt').classList.remove('hidden');
+    setStep(2);
+  }
+
+  // ─── Passo 2 → 3: Gerar ─────────────────────────────────
+  function showGenerateStep() {
+    // Captura prompt editado
+    state.prompt = document.getElementById('prompt-display').textContent;
+    state.negativePrompt = document.getElementById('neg-prompt-display').textContent;
+
+    document.getElementById('card-prompt').classList.add('hidden');
+    document.getElementById('card-generate').classList.remove('hidden');
+    setStep(3);
+  }
+
+  function selectBackend(backend, el) {
+    state.backend = backend;
+    document.querySelectorAll('.backend-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  async function generateImage() {
+    const btn = document.getElementById('btn-generate');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Gerando…';
+
+    document.getElementById('image-placeholder').classList.remove('hidden');
+    document.getElementById('image-result').classList.add('hidden');
+
+    try {
+      const res = await fetch(`${API}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: state.sessionId,
+          prompt: state.prompt,
+          negative_prompt: state.negativePrompt,
+          backend: state.backend,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Erro na geração');
+      }
+
+      const data = await res.json();
+      state.imagePath = data.image_path;
+
+      if (data.image_url) {
+        document.getElementById('result-img').src = `${API}${data.image_url}`;
+        document.getElementById('image-placeholder').classList.add('hidden');
+        document.getElementById('image-result').classList.remove('hidden');
+      }
+
+      toast(`✅ Gerado em ${data.generation_time_s}s via ${data.backend}`, 'success');
+
+      // Mostra bloco de avaliação
+      setTimeout(() => showRatingStep(), 600);
+
+    } catch (e) {
+      toast('Erro: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🎨 Gerar Imagem';
+    }
+  }
+
+  // ─── Passo 3 → 4: Avaliar ────────────────────────────────
+  function showRatingStep() {
+    buildRatingGrid();
+    document.getElementById('card-rating').classList.remove('hidden');
+    document.getElementById('card-rating').scrollIntoView({ behavior: 'smooth' });
+    setStep(4);
+  }
+
+  function buildRatingGrid() {
+    const grid = document.getElementById('rating-grid');
+    grid.innerHTML = '';
+    state.ratings = {};
+
+    DIMENSIONS.forEach(dim => {
+      state.ratings[dim.key] = 0;
+      const row = document.createElement('div');
+      row.className = 'rating-row';
+      row.innerHTML = `
+        <div class="rating-label">
+          <span>${dim.label}</span>
+          <br><span class="text-dim">${dim.hint}</span>
+        </div>
+        <div class="star-rating" id="stars-${dim.key}">
+          ${[1,2,3,4,5].map(n =>
+            `<span class="star" data-dim="${dim.key}" data-val="${n}" onclick="setStar('${dim.key}',${n})">★</span>`
+          ).join('')}
+        </div>
+      `;
+      grid.appendChild(row);
+    });
+  }
+
+  function setStar(dim, val) {
+    state.ratings[dim] = val;
+    const stars = document.querySelectorAll(`#stars-${dim} .star`);
+    stars.forEach(s => {
+      s.classList.toggle('active', parseInt(s.dataset.val) <= val);
+    });
+  }
+
+  async function submitFeedback() {
+    const hasRatings = Object.values(state.ratings).some(v => v > 0);
+    if (!hasRatings) { toast('Avalie pelo menos uma dimensão', 'error'); return; }
+
+    const btn = document.getElementById('btn-feedback');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Enviando…';
+
+    const scores = {};
+    DIMENSIONS.forEach(d => { if (state.ratings[d.key] > 0) scores[d.key] = state.ratings[d.key]; });
+
+    try {
+      const res = await fetch(`${API}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: state.sessionId,
+          backend: state.backend,
+          cci_score: state.cciScore,
+          image_path: state.imagePath,
+          scores,
+          comment: document.getElementById('feedback-comment').value.trim() || null,
+          blocks: Object.keys(state.blocks).length ? state.blocks : null,
+          validators: Object.keys(state.validators).length ? state.validators : null,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast(`🙏 Obrigado! Score global: ${data.global_score ?? '—'}`, 'success');
+        document.getElementById('card-rating').classList.add('hidden');
+        setTimeout(reset, 2000);
+      } else {
+        throw new Error(data.detail || 'Erro');
+      }
+    } catch (e) {
+      toast('Erro: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '✅ Enviar Avaliação';
+    }
+  }
+
+  function skipFeedback() {
+    document.getElementById('card-rating').classList.add('hidden');
+    toast('Avaliação pulada', '');
+    setTimeout(reset, 1500);
+  }
+
+  // ─── Reset ───────────────────────────────────────────────
+  function reset() {
+    state.sessionId = null;
+    state.prompt = '';
+    state.negativePrompt = '';
+    state.cciScore = 0;
+    state.imagePath = null;
+    state.ratings = {};
+
+    document.getElementById('card-prompt').classList.add('hidden');
+    document.getElementById('card-generate').classList.add('hidden');
+    document.getElementById('card-rating').classList.add('hidden');
+    document.getElementById('card-briefing').classList.remove('hidden');
+
+    document.getElementById('image-placeholder').classList.remove('hidden');
+    document.getElementById('image-result').classList.add('hidden');
+
+    document.getElementById('feedback-comment').value = '';
+    setStep(1);
+  }
+
+  // ─── Toast ───────────────────────────────────────────────
+  let toastTimer;
+  function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+  }
+
+  // ─── Init ────────────────────────────────────────────────
+  checkApi();
+  setInterval(checkApi, 30000);
+</script>
+</body>
+</html>
